@@ -42,61 +42,60 @@ def load_config(path):
 
 class AberSites(object):
     def __init__(self, user, passw):
-        pass
+        self.session_setup(user, passw)
+        self.shib_auth()
 
-def get_int_usage(user, passw):
-    page_url = 'https://myaccount.aber.ac.uk/protected/traffic/'
-    #Steps to login Shibolleth/SAML
-    s1 = 'https://shibboleth.aber.ac.uk/idp/AuthnEngine'
-    s2 = 'https://shibboleth.aber.ac.uk/idp/Authn/RemoteUser'
-    s3 = 'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'
-    s4 = 'https://myaccount.aber.ac.uk/Shibboleth.sso/SAML/POST'
+    def session_setup(self, user, passw):        
+        user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"
+        
+        session = requests.session()
+        session.headers.update({'User-Agent': user_agent})
+        session.auth = (user, passw)
+        self.session = session
 
-    user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"
+    def shib_auth(self):
+        login_url = 'https://myaccount.aber.ac.uk/protected/'
 
-    session = requests.session()
-    session.headers.update({'User-Agent': user_agent})
-    auth = (user, passw)
+        #Steps to authenticate with Shibolleth/SAML
+        s1 = 'https://shibboleth.aber.ac.uk/idp/AuthnEngine'
+        s2 = 'https://shibboleth.aber.ac.uk/idp/Authn/RemoteUser'
+        s3 = 'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'
+        s4 = 'https://myaccount.aber.ac.uk/Shibboleth.sso/SAML/POST'
 
-    r = session.get(page_url, allow_redirects=False)
-    location = r.headers['location']
-    session.headers.update({'Host': 'shibboleth.aber.ac.uk',
+        r = self.session.get(login_url, allow_redirects=False)
+        location = r.headers['location']
+        self.session.headers.update({'Host': 'shibboleth.aber.ac.uk',
                             'Referer': 'https://myaccount.aber.ac.uk/'})
-    r = session.get(location, auth=auth, allow_redirects=False)
-    r = session.get(s1, auth=auth , allow_redirects=False)
-    r = session.get(s2, auth=auth , allow_redirects=False)
-    r = session.get(s3, auth=auth , allow_redirects=False)
-    # Retrieving the SAMLResponse and target
-    soup = BeautifulSoup(r.content)
-    target = soup.find('input', {'name': 'TARGET'}).get('value')
-    SAMLResponse = soup.find('input', {'name': 'SAMLResponse'}).get('value')
-    payload = {'SAMLResponse':SAMLResponse, 'TARGET': target}
-    session.headers.update({'Host':'myaccount.aber.ac.uk',
-                            'Origin':'https://shibboleth.aber.ac.uk',
-                            'Referer':'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'})
 
-    r = session.post(s4, data=payload)
-
-    
-    print(r.text)
-    #print(request.__dict__)
-    #print(session.headers)
-    print(requests.utils.dict_from_cookiejar(session.cookies))
-    #for h in r.history:
-    #    print(h.url)
-    # print(request.headers)
-    # print(b64_p)
-    # print(session.headers)
+        r = self.session.get(location, allow_redirects=False)
+        r = self.session.get(s1, allow_redirects=False)
+        r = self.session.get(s2, allow_redirects=False)
+        # Retrieving the SAMLResponse and target
+        r = self.session.get(s3, allow_redirects=False)
+        soup = BeautifulSoup(r.content)
+        target = soup.find('input', {'name': 'TARGET'}).get('value')
+        SAMLResponse = soup.find('input', {'name': 'SAMLResponse'}).get('value')
+        payload = {'SAMLResponse':SAMLResponse, 'TARGET': target}
+        self.session.headers.update({'Host':'myaccount.aber.ac.uk',
+                                'Origin':'https://shibboleth.aber.ac.uk',
+                                'Referer':'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'})
+        r = self.session.post(s4, data=payload)
 
 
-def get_timetable(user, passw):
-    login_url = 'https://studentrecord.aber.ac.uk/en/index.php'
-    page_url = 'https://studentrecord.aber.ac.uk/en/timetable.php'
-    session = requests.session()
-    login_data = dict(username=user, password=passw, doLogin='doLogin')
-    session.post(login_url, data=login_data)
-    request = session.get(page_url)
-    print(request.content)
+    def get_int_usage(self):
+        page_url = 'https://myaccount.aber.ac.uk/protected/traffic/'
+        r = self.session.get(page_url)
+        print(r.text)
+
+
+    def get_timetable(self):
+        login_url = 'https://studentrecord.aber.ac.uk/en/index.php'
+        page_url = 'https://studentrecord.aber.ac.uk/en/timetable.php'
+        session = requests.session()
+        login_data = dict(username=user, password=passw, doLogin='doLogin')
+        session.post(login_url, data=login_data)
+        request = session.get(page_url)
+        print(request.content)
 
 
 def main():
@@ -119,7 +118,8 @@ def main():
         logging.debug(e)
         raise SystemExit(0)
 
-    get_int_usage(user, passw)
+    sites = AberSites(user, passw)
+    sites.get_int_usage()
 
 
 if __name__ == '__main__':
