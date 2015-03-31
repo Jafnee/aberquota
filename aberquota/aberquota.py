@@ -1,5 +1,6 @@
 import os
 import logging
+from base64 import b64decode
 from configparser import ConfigParser
 from configparser import ParsingError
 
@@ -40,6 +41,46 @@ def load_config(path):
     return config
 
 
+class OutputHandler(object):
+    def __init__(self, string, b64_img=None):
+        self.string = string
+        if b64_img:
+            self.b64_img = b64_img
+
+    def _parse_string(self):
+        pass
+
+    def as_string(self):
+        return self.string
+
+    def as_fraction(self, numerator, denominator, unit=''):
+        n = ''.join((str(int(numerator)), unit))
+        d = ''.join((str(int(denominator)), unit))
+        msg = "{} / {}".format(n, d)
+        return msg
+
+    def as_percentage(
+            self,
+            numerator=1,
+            denominator=1,
+            calculated=None,
+            symbol=''):
+        if calculated:
+            msg = str(calculated)
+        else:
+            msg = str(int(numerator / denominator * 100))
+        if symbol:
+            ''.join((msg, symbol))
+        return msg
+
+    def save_b64_to_png(self, dir_path, file_name):
+        if not file_name.endswith('.png'):
+            file_name = ''.join((file_name, '.png'))
+        img = open(os.path.join(dir_path, file_name), 'wb')
+        img.write(b64decode(self.b64_img))
+        img.close()
+
+
 class AberSites(object):
 
     def __init__(self, user, passw):
@@ -47,9 +88,9 @@ class AberSites(object):
         self.shib_auth()
 
     def session_setup(self, user, passw):
-        user_agent = "Mozilla/5.0 (X11; Linux x86_64)" \
-            " AppleWebKit/537.36 (KHTML, like Gecko)" \
-            " Chrome/41.0.2272.101 Safari/537.36"
+        user_agent = ("Mozilla/5.0 (X11; Linux x86_64)"
+                      " AppleWebKit/537.36 (KHTML, like Gecko)"
+                      " Chrome/41.0.2272.101 Safari/537.36")
 
         session = requests.session()
         session.headers.update({'User-Agent': user_agent})
@@ -91,7 +132,14 @@ class AberSites(object):
     def get_int_usage(self):
         page_url = 'https://myaccount.aber.ac.uk/protected/traffic/'
         r = self.session.get(page_url)
-        print(r.text)
+
+        soup = BeautifulSoup(r.text)
+        content = soup.find('div', {'id': 'webapp'})
+        usage = content.find('p').getText()
+        string = ''.join(usage.split('\n'))
+
+        b64_img = content.find('img')['src'].split(',')[1]
+        return (string, b64_img)
 
     def get_timetable(self):
         login_url = 'https://studentrecord.aber.ac.uk/en/index.php'
@@ -123,8 +171,11 @@ def main():
         logging.debug(e)
         raise SystemExit(0)
 
-    sites = AberSites(user, passw)
-    sites.get_int_usage()
+    site = AberSites(user, passw)
+    string, b64_img = site.get_int_usage()
+    oh = OutputHandler(string, b64_img)
+    oh.save_b64_to_png(config_dir, 'usage.png')
+    print(oh.as_string())
 
 
 if __name__ == '__main__':
