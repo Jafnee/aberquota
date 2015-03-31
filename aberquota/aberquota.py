@@ -2,7 +2,6 @@ import os
 import logging
 from configparser import ConfigParser
 from configparser import ParsingError
-from base64 import b64encode
 
 import requests
 from bs4 import BeautifulSoup
@@ -40,14 +39,18 @@ def load_config(path):
         raise
     return config
 
+
 class AberSites(object):
+
     def __init__(self, user, passw):
         self.session_setup(user, passw)
         self.shib_auth()
 
-    def session_setup(self, user, passw):        
-        user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"
-        
+    def session_setup(self, user, passw):
+        user_agent = "Mozilla/5.0 (X11; Linux x86_64)" \
+            " AppleWebKit/537.36 (KHTML, like Gecko)" \
+            " Chrome/41.0.2272.101 Safari/537.36"
+
         session = requests.session()
         session.headers.update({'User-Agent': user_agent})
         session.auth = (user, passw)
@@ -56,7 +59,7 @@ class AberSites(object):
     def shib_auth(self):
         login_url = 'https://myaccount.aber.ac.uk/protected/'
 
-        #Steps to authenticate with Shibolleth/SAML
+        # Steps to authenticate with Shibolleth/SAML
         s1 = 'https://shibboleth.aber.ac.uk/idp/AuthnEngine'
         s2 = 'https://shibboleth.aber.ac.uk/idp/Authn/RemoteUser'
         s3 = 'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'
@@ -64,8 +67,8 @@ class AberSites(object):
 
         r = self.session.get(login_url, allow_redirects=False)
         location = r.headers['location']
-        self.session.headers.update({'Host': 'shibboleth.aber.ac.uk',
-                            'Referer': 'https://myaccount.aber.ac.uk/'})
+        self.session.headers.update(
+            {'Host': 'shibboleth.aber.ac.uk', 'Referer': 'https://myaccount.aber.ac.uk/'})
 
         r = self.session.get(location, allow_redirects=False)
         r = self.session.get(s1, allow_redirects=False)
@@ -74,19 +77,21 @@ class AberSites(object):
         r = self.session.get(s3, allow_redirects=False)
         soup = BeautifulSoup(r.content)
         target = soup.find('input', {'name': 'TARGET'}).get('value')
-        SAMLResponse = soup.find('input', {'name': 'SAMLResponse'}).get('value')
-        payload = {'SAMLResponse':SAMLResponse, 'TARGET': target}
-        self.session.headers.update({'Host':'myaccount.aber.ac.uk',
-                                'Origin':'https://shibboleth.aber.ac.uk',
-                                'Referer':'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'})
+        SAMLResponse = soup.find(
+            'input', {
+                'name': 'SAMLResponse'}).get('value')
+        payload = {'SAMLResponse': SAMLResponse, 'TARGET': target}
+        self.session.headers.update(
+            {
+                'Host': 'myaccount.aber.ac.uk',
+                'Origin': 'https://shibboleth.aber.ac.uk',
+                'Referer': 'https://shibboleth.aber.ac.uk/idp/profile/Shibboleth/SSO'})
         r = self.session.post(s4, data=payload)
-
 
     def get_int_usage(self):
         page_url = 'https://myaccount.aber.ac.uk/protected/traffic/'
         r = self.session.get(page_url)
         print(r.text)
-
 
     def get_timetable(self):
         login_url = 'https://studentrecord.aber.ac.uk/en/index.php'
