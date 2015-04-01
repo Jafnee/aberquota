@@ -4,8 +4,18 @@ Python3 tool for getting internet usage off the Aberystwyth University network.
 # Config
 The config.ini file found in __/home/{your-user}/.aberquota/config.ini__ needs to be edited to contain your username and password.
 
-
 Downloaded images are placed in the same directory.
+
+## Sample Conky config
+![conkypic](http://i.gyazo.com/55ee3e31334758ddc010493e7009b521.png)
+```
+Quota
+${exec aberquota --image}
+${exec aberquota -f} $alignr ${exec aberquota -p}%
+${execbar aberquota -p}
+${image ~/.aberquota/usage.png -p 0,350 -s 220x150}
+```
+
 # Installation
 A Python3 interpreter must be used.
 
