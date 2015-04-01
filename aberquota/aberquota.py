@@ -205,19 +205,16 @@ def main():
     oh = OutputHandler(string, b64_img)    
     
     if args.string:
-        logging.info(oh.as_string())
+        print(oh.as_string())
     if args.int:
-        logging.info(oh.as_int())
+        print(oh.as_int())
     if args.sentence:
-        logging.info(oh.as_sentence())
+        print(oh.as_sentence())
     if args.percent:
-        logging.info(oh.as_percentage())
+        print(oh.as_percentage())
     if args.fraction:
-        logging.info(oh.as_fraction())
+        print(oh.as_fraction())
     if args.image:
         oh.save_b64_to_png(config_dir, 'usage.png')
 
-
-if __name__ == '__main__':
-    main()
 
