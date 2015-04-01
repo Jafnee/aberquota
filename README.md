@@ -10,9 +10,10 @@ Downloaded images are placed in the same directory.
 ![conkypic](http://i.gyazo.com/55ee3e31334758ddc010493e7009b521.png)
 ```
 Quota
-${exec aberquota --image}
-${exec aberquota -f} $alignr ${exec aberquota -p}%
-${execbar aberquota -p}
+${texeci 300 aberquota --image}
+${texeci 120 aberquota -f} $alignr ${texeci 120 aberquota -p}%
+${execibar 120 aberquota -p}
+${execigraph 120 aberquota -p}
 ${image ~/.aberquota/usage.png -p 0,350 -s 220x150}
 ```
 
