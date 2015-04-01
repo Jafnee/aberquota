@@ -1,3 +1,4 @@
+import argparse
 import os
 import logging
 from base64 import b64decode
@@ -7,6 +8,17 @@ from configparser import ParsingError
 import requests
 from bs4 import BeautifulSoup
 
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sentence', help="internet usage as it appears on the website", action='store_true')
+    parser.add_argument('-s', '--string', help="internet usage including units", action='store_true')
+    parser.add_argument('-i', '--int', help="internet usage without units", action='store_true')
+    parser.add_argument('-p','--percent', help="internet usage as a percentage", action='store_true')
+    parser.add_argument('-f','--fraction', help="internet usage as a fraction", action='store_true')
+    parser.add_argument('--image', help="downloads and saves Internet usage chart", action='store_true')
+    parser.add_argument("-v", "--verbose", help="increase output verbosity", action='store_true')
+    parser.add_argument("--debug", help="prints debug info", action='store_true')
+    return parser
 
 def check_config(dir_path, file):
     if not os.path.exists(dir_path):
@@ -47,28 +59,34 @@ class OutputHandler(object):
         if b64_img:
             self.b64_img = b64_img
 
-    def _parse_string(self):
-        pass
-
-    def as_string(self):
+    def as_sentence(self):
         return self.string
 
-    def as_fraction(self, numerator, denominator, unit=''):
+    def as_string(self):
+        msg = self.string.split(' ')[-1]
+        return msg
+
+    def as_int(self):
+        msg = self.string.split(' ')[-1][:-2]
+        return msg
+
+    def as_fraction(self, denominator=12000, unit='MB', str_fmt="{}/{}"):
+        numerator = self.as_int()
         n = ''.join((str(int(numerator)), unit))
         d = ''.join((str(int(denominator)), unit))
-        msg = "{} / {}".format(n, d)
+        msg = str_fmt.format(n, d)
         return msg
 
     def as_percentage(
             self,
-            numerator=1,
-            denominator=1,
+            denominator=12000,
             calculated=None,
             symbol=''):
         if calculated:
             msg = str(calculated)
         else:
-            msg = str(int(numerator / denominator * 100))
+            numerator = self.as_int()
+            msg = str(int(int(numerator) / int(denominator) * 100))
         if symbol:
             ''.join((msg, symbol))
         return msg
@@ -79,6 +97,7 @@ class OutputHandler(object):
         img = open(os.path.join(dir_path, file_name), 'wb')
         img.write(b64decode(self.b64_img))
         img.close()
+        logging.info("Image saved to {}".format(os.path.join(dir_path, file_name)))
 
 
 class AberSites(object):
@@ -152,12 +171,22 @@ class AberSites(object):
 
 
 def main():
+    parser = arg_parser()
+    args = parser.parse_args()
+
     config_dir = os.path.expanduser('~/.aberquota/')
     config_file = 'config.ini'
 
+    level = logging.WARNING
+    if args.verbose:
+        level = logging.INFO
+    if args.debug:
+        level = logging.DEBUG
+
+    logging.getLogger('requests').setLevel(level)
     logging.basicConfig(
-        format='%(levelname)s:%(message)s',
-        level=logging.DEBUG)
+        format='%(message)s',
+        level=level)
 
     if not check_config(config_dir, config_file):
         create_config(os.path.join(config_dir, config_file))
@@ -173,10 +202,22 @@ def main():
 
     site = AberSites(user, passw)
     string, b64_img = site.get_int_usage()
-    oh = OutputHandler(string, b64_img)
-    oh.save_b64_to_png(config_dir, 'usage.png')
-    print(oh.as_string())
+    oh = OutputHandler(string, b64_img)    
+    
+    if args.string:
+        logging.info(oh.as_string())
+    if args.int:
+        logging.info(oh.as_int())
+    if args.sentence:
+        logging.info(oh.as_sentence())
+    if args.percent:
+        logging.info(oh.as_percentage())
+    if args.fraction:
+        logging.info(oh.as_fraction())
+    if args.image:
+        oh.save_b64_to_png(config_dir, 'usage.png')
 
 
 if __name__ == '__main__':
     main()
+
